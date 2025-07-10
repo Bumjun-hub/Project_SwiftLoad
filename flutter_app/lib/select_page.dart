@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'driver_join_page.dart';
+import 'google_login_page.dart';
+
 class SelectPage extends StatelessWidget {
   const SelectPage({super.key});
 
@@ -17,8 +20,9 @@ class SelectPage extends StatelessWidget {
                 imagePath: 'assets/box.png',
                 title: '화물 신청하기',
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('구글 로그인이 필요합니다')),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => GoogleLoginPage()),
                   );
                 },
               ),
@@ -27,7 +31,10 @@ class SelectPage extends StatelessWidget {
                 imagePath: 'assets/truck.png',
                 title: '기사님 모집',
                 onTap: () {
-                  // TODO: 기사님 모집 이동
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const DriverJoinPage()),
+                  );
                 },
               ),
             ],
