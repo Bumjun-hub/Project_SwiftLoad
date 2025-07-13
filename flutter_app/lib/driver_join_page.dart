@@ -13,7 +13,6 @@ class _DriverJoinPageState extends State<DriverJoinPage> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController contactController = TextEditingController();
   final TextEditingController carNumberController = TextEditingController();
-  final TextEditingController carTypeController = TextEditingController();
   final TextEditingController licenseController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
   final TextEditingController detailAddressController = TextEditingController();
@@ -21,12 +20,27 @@ class _DriverJoinPageState extends State<DriverJoinPage> {
 
   bool agreePrivacy = false;
 
+  // 차종 선택 리스트
+  final List<String> carTypes = [
+    '카고',
+    '윙바디',
+    '냉장탑',
+    '냉동탑',
+    '리프트',
+    '리프트윙',
+    '플러스 카고',
+    '플러스 윙바디',
+    '플러스 축차',
+    '플러스 축차 윙바디',
+  ];
+
+  String? selectedCarType;
+
   @override
   void dispose() {
     nameController.dispose();
     contactController.dispose();
     carNumberController.dispose();
-    carTypeController.dispose();
     licenseController.dispose();
     addressController.dispose();
     detailAddressController.dispose();
@@ -42,17 +56,17 @@ class _DriverJoinPageState extends State<DriverJoinPage> {
         );
         return;
       }
-      // 가입 처리 로직 넣기 (API 호출 등)
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('가입 신청이 완료되었습니다.')),
       );
-      Navigator.pop(context); // 완료 후 이전 페이지로 이동
+      Navigator.pop(context);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white, // ✅ 배경 흰색
       appBar: AppBar(
         title: const Text('기사 가입 신청서'),
         backgroundColor: Colors.amber,
@@ -84,7 +98,25 @@ class _DriverJoinPageState extends State<DriverJoinPage> {
               const SizedBox(height: 8),
 
               const Text('차종'),
-              TextFormField(controller: carTypeController),
+              DropdownButtonFormField<String>(
+                value: selectedCarType,
+                items: carTypes
+                    .map((type) => DropdownMenuItem(
+                  value: type,
+                  child: Text(type),
+                ))
+                    .toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedCarType = value;
+                  });
+                },
+                decoration: const InputDecoration(
+                  hintText: '차종 선택',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) => value == null || value.isEmpty ? '차종을 선택해주세요' : null,
+              ),
               const SizedBox(height: 8),
 
               const Text('운전면허'),
