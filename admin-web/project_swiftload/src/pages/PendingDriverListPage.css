@@ -1,0 +1,111 @@
+.pending-driver-page-bg {
+  background: #f3f6f9;
+  min-height: 100vh;
+}
+
+.pending-driver-container {
+  flex: 1;
+  padding: 40px 40px 0 40px;
+}
+
+.pending-driver-title {
+  margin-bottom: 24px;
+  font-weight: 800;
+  font-size: 2rem;
+}
+
+.pending-driver-table-wrapper {
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+  padding: 0;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+}
+
+.pending-driver-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #fff;
+}
+
+.pending-driver-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  padding: 14px 10px;
+  border-bottom: 2px solid #ececec;
+  font-size: 16px;
+  text-align: left;
+}
+
+.pending-driver-table td {
+  padding: 14px 10px;
+  font-size: 15px;
+  border-bottom: 1px solid #ececec;
+  background: #fff;
+}
+
+.pending-driver-table tr {
+  transition: background 0.2s;
+}
+
+.pending-driver-table tr:hover {
+  background: #f0f4fc;
+}
+
+.pending-detail-btn {
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 18px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.15s;
+}
+.pending-detail-btn:hover {
+  background: #115293;
+}
+
+.pending-approve-btn {
+  background: #4caf50;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 18px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.15s;
+}
+.pending-approve-btn:hover {
+  background: #357a38;
+}
+
+.pending-reject-btn {
+  background: #e53935;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 18px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.15s;
+}
+.pending-reject-btn:hover {
+  background: #a02725;
+}
+
+.pending-badge {
+  display: inline-block;
+  padding: 2px 12px;
+  border-radius: 8px;
+  font-weight: bold;
+  color: #fff;
+  font-size: 13px;
+}
+.pending-badge-pending {
+  background: #ff9800;
+}
