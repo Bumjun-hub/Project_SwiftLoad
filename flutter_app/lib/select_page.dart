@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'driver_join_page.dart';
 import 'google_login_page.dart';
 
+import 'package:flutter_app/firebase_test_page.dart';
+
 class SelectPage extends StatelessWidget {
   const SelectPage({super.key});
 
@@ -26,7 +28,7 @@ class SelectPage extends StatelessWidget {
                   );
                 },
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),   //원래 32
               OptionCard(
                 imagePath: 'assets/truck.png',
                 title: '기사님 모집',
@@ -37,6 +39,27 @@ class SelectPage extends StatelessWidget {
                   );
                 },
               ),
+              const SizedBox(height: 16), // 카드와 버튼 사이에 간격을 줍니다.
+
+              // ▼▼▼▼▼ 이 버튼 코드를 추가 ▼▼▼▼▼
+              TextButton(
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero, // 내부 여백 제거
+                  minimumSize: const Size(50, 30), // 최소 크기 지정
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap, // 터치 영역 최소화
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const FirebaseTestPage()),
+                  );
+                },
+                child: const Text(
+                  'Firebase Test', // 텍스트도 짧게
+                  style: TextStyle(color: Colors.grey, fontSize: 12), // 글자 크기도 작게
+                ),
+              ),
+              // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
             ],
           ),
         ),
@@ -44,6 +67,7 @@ class SelectPage extends StatelessWidget {
     );
   }
 }
+
 
 class OptionCard extends StatelessWidget {
   final String imagePath;
