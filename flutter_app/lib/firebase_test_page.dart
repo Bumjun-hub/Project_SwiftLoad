@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+// 여긴 firebase에 값이 들어가는지 테스트 한 페이지에요
+// 여기에 있는 폼을 사용하면 좀 더 편할수도 있어요!><
+// 테스트페이지 기준으로 firebase에 값은 잘 들어가고 있습니다~
 // 테스트 전용 페이지 위젯
  class FirebaseTestPage extends StatefulWidget {
      const FirebaseTestPage({super.key});
