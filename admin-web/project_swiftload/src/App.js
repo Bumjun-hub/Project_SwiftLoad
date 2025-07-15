@@ -11,6 +11,7 @@ import { auth } from "./firebase";
 
 const ADMIN_EMAILS = [
   "jc971017@gmail.com"
+  "hbo1053@gmail.com"
 ];
 
 function App() {
