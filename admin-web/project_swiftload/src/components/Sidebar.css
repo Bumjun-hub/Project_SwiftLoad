@@ -1,4 +1,7 @@
+/* src/components/Sidebar.css */
+
 .sidebar {
+  width: 180px;
   background: #fffbea;
   border-right: 1.5px solid #ffe066;
   min-height: 100vh;
@@ -7,44 +10,8 @@
   flex-direction: column;
   box-shadow: 2px 0 8px rgba(0,0,0,0.03);
   z-index: 10;
-  position: relative;
-
-  /* 애니메이션 효과 */
-  transition: width 0.25s cubic-bezier(.4,0,.2,1), 
-              opacity 0.22s cubic-bezier(.4,0,.2,1),
-              min-width 0.25s cubic-bezier(.4,0,.2,1);
-  overflow-x: hidden;
 }
 
-/* 열린 상태 */
-.sidebar-open {
-  width: 180px;
-  min-width: 180px;
-  opacity: 1;
-  pointer-events: auto;
-}
-
-/* 닫힌 상태 */
-.sidebar-closed {
-  width: 0;
-  min-width: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* 사이드바 내부 텍스트/링크가 천천히 사라짐 */
-.sidebar-closed .sidebar-link {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.18s cubic-bezier(.4,0,.2,1);
-}
-
-.sidebar-open .sidebar-link {
-  opacity: 1;
-  transition: opacity 0.22s cubic-bezier(.4,0,.2,1) 0.05s;
-}
-
-/* 나머지 링크 스타일은 동일하게 복붙 */
 .sidebar-link {
   display: block;
   padding: 16px 32px;

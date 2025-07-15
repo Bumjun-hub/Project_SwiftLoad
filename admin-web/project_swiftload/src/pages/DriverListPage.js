@@ -35,7 +35,7 @@ function DriverListPage() {
     return (
         <div className="driver-page-bg">
             <div style={{ display: 'flex', minHeight: '100vh' }}>
-                <Sidebar />
+                
                 <div className="driver-container">
                     <h2 className="driver-title">차주 관리</h2>
                     <div className="driver-table-wrapper">
