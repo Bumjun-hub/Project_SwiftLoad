@@ -220,10 +220,6 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
         'status': '견적대기', // 초기 상태
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('화물 신청이 완료되었습니다!')),
-      );
-
       // PaymentPage로 전달할 orderData 맵 생성
       Map<String, dynamic> orderInfoForPayment = {
         'orderId': docRef.id, // Firestore 문서 ID를 orderId로 사용
