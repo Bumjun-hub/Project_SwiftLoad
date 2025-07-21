@@ -1,76 +1,56 @@
 .header {
   position: relative;
-  width: 100%;
-  min-height: 64px;
-  background: #FFD600;
   display: flex;
   align-items: center;
-  box-shadow: 0 2px 14px rgba(255, 224, 102, 0.14), 0 1px 4px rgba(0,0,0,0.04);
+  height: 64px;
+  background: #FFD600;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  padding: 0;
+  z-index: 10;
 }
 
+/* 햄버거(사이드바) 버튼 */
 .sidebar-toggle-btn {
-  background: transparent;
+  background: none;
   border: none;
-  font-size: 2rem;
-  margin-left: 18px;
+  outline: none;
+  margin-left: 20px;
+  margin-right: 12px;
+  font-size: 28px;
   cursor: pointer;
-  color: #222;
-  padding: 8px;
-  transition: background 0.12s;
-}
-.sidebar-toggle-btn:hover {
-  background: #ffe06633;
-  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  height: 64px;
 }
 
+.hamburger-icon {
+  font-size: 32px;
+  color: #333;
+  vertical-align: middle;
+}
+
+/* 로고 영역 (가운데 정렬) */
 .header-logo {
   flex: 1;
+  text-align: center;
   display: flex;
   justify-content: center;
   align-items: center;
+  height: 64px;
 }
 
-.header-logo img {
+.logo_image {
   height: 40px;
-  margin: 0 auto;
-  user-select: none;
+  vertical-align: middle;
+  /* 필요하면 max-width: 180px 등 추가 */
 }
 
-.header-userbox {
+/* 로그인/로그아웃 버튼 위치 등(오른쪽 정렬용) */
+
+.header-user-box {
   position: absolute;
-  right: 30px;
+  right: 28px;
   top: 50%;
   transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
-.header-username {
-  font-weight: 700;
-  font-size: 1rem;
-  color: #333;
-  background: #fffde4;
-  padding: 7px 16px;
-  border-radius: 18px;
-  margin-right: 2px;
-}
-
-.header-login-btn {
-  background: #fff;
-  color: #222;
-  border: 1.5px solid #FFD600;
-  padding: 7px 19px;
-  border-radius: 8px;
-  font-weight: 700;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background 0.14s, color 0.14s, border 0.14s, transform 0.12s;
-  margin-left: 3px;
-}
-.header-login-btn:hover {
-  background: #ffe066;
-  color: #1a1a1a;
-  border: 1.5px solid #ffe066;
-  transform: translateY(-2px) scale(1.05);
-}

@@ -11,7 +11,7 @@ function Header({ onSidebarToggle, user }) {
   // 로그아웃 버튼 클릭시 실행
   const handleLogout = async () => {
     await signOut(auth); // 파이어베이스 로그아웃
-    navigate('/login');  // 로그아웃 후 로그인페이지로 이동(원하면 다른 페이지로 이동 가능)
+     window.location.reload(); 
   };
 
   return (
@@ -20,7 +20,7 @@ function Header({ onSidebarToggle, user }) {
         <span className="hamburger-icon">&#9776;</span>
       </button>
       <div className="header-logo">
-        <img src="/logo_swiftload.png" alt="SwiftLoad 로고" height={40} />
+        <img src="/swiftload.png" alt="SwiftLoad 로고" height={40} />
       </div>
       <div style={{ position: 'absolute', right: 24, top: 14 }}>
         {/* 로그인 안 했을 때는 로그인 버튼 */}
