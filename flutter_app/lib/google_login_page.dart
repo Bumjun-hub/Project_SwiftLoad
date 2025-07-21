@@ -1,7 +1,6 @@
 // google_login_page.dart
 import 'package:flutter/material.dart';
 import 'cargo_order_page.dart';
-import 'order_list_page.dart';
 
 class GoogleLoginPage extends StatelessWidget {
   const GoogleLoginPage({super.key});
@@ -14,7 +13,7 @@ class GoogleLoginPage extends StatelessWidget {
         child: SizedBox(
           width: 240,
           height: 60,
-          child: OutlinedButton(                 // ✅ 테두리 버튼
+          child: OutlinedButton(
             onPressed: () {
               Navigator.push(
                 context,
@@ -24,8 +23,8 @@ class GoogleLoginPage extends StatelessWidget {
               );
             },
             style: OutlinedButton.styleFrom(
-              backgroundColor: Colors.white,    // ✅ 내부 흰색
-              side: const BorderSide(           // ✅ 주황 테두리
+              backgroundColor: Colors.white,
+              side: const BorderSide(
                 color: Color(0xFFF4B800),
                 width: 3,
               ),
@@ -36,7 +35,6 @@ class GoogleLoginPage extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 📌 assets/google.png — 48x48 투명 배경 아이콘
                 Image.asset(
                   'assets/google.png',
                   width: 24,

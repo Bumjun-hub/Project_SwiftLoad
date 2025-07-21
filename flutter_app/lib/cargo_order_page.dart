@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'order_list_page.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore 패키지 import
-import 'package:intl/intl.dart'; // 날짜/시간 포맷팅을 위해 추가
-import 'package:flutter_app/payment_page.dart'; // PaymentPage 임포트
-import 'package:firebase_auth/firebase_auth.dart'; // FirebaseAuth 추가
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart'; // 날짜/시간
+import 'package:flutter_app/payment_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class CargoOrderPage extends StatefulWidget {
   const CargoOrderPage({super.key});
@@ -16,7 +15,7 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
   final List<String> tonList = [
     '1톤 트럭',
     '1.2톤 트럭',
-    '1.5톤 트럭', // 1.5톤 트럭 추가
+    '1.5톤 트럭',
     '2.5톤 트럭',
     '3.5톤 트럭',
     '5톤 트럭',
@@ -62,7 +61,6 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
     '고객님이 하차', '지게차이용', '기사님이 혼자', '고객님과 같이',
   ];
 
-  // 입력 컨트롤러들
   final TextEditingController departureAddressController = TextEditingController();
   final TextEditingController departureDetailController = TextEditingController();
   final TextEditingController departureCompanyController = TextEditingController();
@@ -80,12 +78,12 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
   final orangeBorder = OutlineInputBorder(
     borderRadius: BorderRadius.circular(4),
     borderSide: const BorderSide(
-      color: Color(0xFFFFBB00), // ★ 주황색으로 변경
+      color: Color(0xFFFFBB00),
       width: 2,
     ),
   );
 
-  // 날짜와 시간을 선택하는 헬퍼 함수
+  // 날짜 시간 선택
   Future<DateTime?> _selectDateTime(BuildContext context) async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
@@ -119,8 +117,8 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
       '1톤 트럭': 50000.0,
       '1.2톤 트럭': 50000.0,
       '1.5톤 트럭': 70000.0,
-      '2.5톤 트럭': 80000.0, // 기존 값 유지
-      '3.5톤 트럭': 100000.0, // 기존 값 유지
+      '2.5톤 트럭': 80000.0,
+      '3.5톤 트럭': 100000.0,
       '5톤 트럭': 110000.0,
       '11톤 트럭': 200000.0,
     };
@@ -134,7 +132,7 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
 
     // 3. 물건 갯수가 20개 이상이면 3만원 추가
     const double quantityAddOn = 30000.0;
-    if (_selectedItemType != '기타') { // 기타가 아닐 때만 수량 체크
+    if (_selectedItemType != '기타') {
       int quantity = int.tryParse(_itemQuantityController.text) ?? 0;
       if (quantity >= 20) {
         basePrice += quantityAddOn;
@@ -151,7 +149,7 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
     return basePrice;
   }
 
-  // Firestore에 화물 신청 정보를 저장하는 함수
+  // Firestore에 화물 신청 정보 저장
   Future<void> _saveOrderInfo() async {
     // 필수 필드 유효성 검사 (필요에 따라 추가/수정)
     if (selectedTon == null ||
@@ -190,7 +188,6 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
     final double calculatedPrice = _calculatePrice(); // 운임 계산
 
     try {
-      // Firestore에 데이터 저장 및 문서 참조 가져오기
       DocumentReference docRef = await FirebaseFirestore.instance.collection('estimates').add({
         'selectedTon': selectedTon,
         'selectedCarType': selectedCarType,
@@ -217,23 +214,22 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
         'calculatedPrice': calculatedPrice, // 계산된 운임 저장
         'createdAt': FieldValue.serverTimestamp(),
         'userId': FirebaseAuth.instance.currentUser?.uid, // 현재 사용자 UID 저장
-        'status': '견적대기', // 초기 상태
+        'status': '견적대기',
       });
 
-      // PaymentPage로 전달할 orderData 맵 생성
       Map<String, dynamic> orderInfoForPayment = {
         'orderId': docRef.id, // Firestore 문서 ID를 orderId로 사용
-        'price': calculatedPrice.toInt(), // 가격을 문자열로 전달
+        'price': calculatedPrice.toInt(),
         'userId': FirebaseAuth.instance.currentUser?.uid,
-        'hospitalName': departureAddressController.text, // 예시: 출발지 주소를 병원 이름으로 전달
-        'weight': itemDetails, // 예시: 물품 상세 정보를 무게로 전달
-        'status': '견적대기', // PaymentPage에서 사용할 초기 상태
+        'hospitalName': departureAddressController.text,
+        'weight': itemDetails, //물품 상세 정보를 무게로 전달
+        'status': '견적대기', // 초기 상태
       };
 
       // 저장 성공 후 결제 페이지로 이동
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => PaymentPage(orderData: orderInfoForPayment)), // orderData 전달
+        MaterialPageRoute(builder: (_) => PaymentPage(orderData: orderInfoForPayment)),
       );
 
       // 성공 후 필드 초기화
@@ -255,13 +251,13 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
         selectedTon = null;
         selectedCarType = null;
         _selectedItemType = null;
-        _pickupTimeOption = null; // 초기화
-        _pickupDateTime = null; // 초기화
-        _dropoffTimeOption = null; // 초기화
-        _dropoffDateTime = null; // 초기화
-        _selectedOption = null; // 초기화
-        _selectedBoardingMethod = null; // 초기화
-        _selectedUnloadingMethod = null; // 초기화
+        _pickupTimeOption = null;
+        _pickupDateTime = null;
+        _dropoffTimeOption = null;
+        _dropoffDateTime = null;
+        _selectedOption = null;
+        _selectedBoardingMethod = null;
+        _selectedUnloadingMethod = null;
       });
 
     } catch (e) {
@@ -326,8 +322,8 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: isSelected ? Colors.amber : Colors.grey[200], // 선택 시 진한 노란색
-        foregroundColor: isSelected ? Colors.white : Colors.black, // 선택 시 흰색 글씨
+        backgroundColor: isSelected ? Colors.amber : Colors.grey[200],
+        foregroundColor: isSelected ? Colors.white : Colors.black,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         side: BorderSide(color: isSelected ? Colors.amber : Colors.grey.shade400, width: 1.5),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -339,7 +335,7 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // 배경 흰색
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.amber,
         title: const Text('화물 신청'),
@@ -395,7 +391,7 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
             ),
             const SizedBox(height: 20),
 
-            // 물품정보 섹션
+            // 물품 정보
             buildSectionTitle('물품정보'),
             DropdownButtonFormField<String>(
               value: _selectedItemType,
@@ -488,7 +484,7 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
               ],
             ),
 
-            // 하차시간 섹션
+            // 하차시간
             buildSectionTitle('하차시간'),
             Wrap(
               spacing: 8,
@@ -525,12 +521,11 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
               ],
             ),
 
-            // 옵션 섹션 수정
+            // 옵션 수정
             buildSectionTitle('옵션'),
             Wrap(
               spacing: 8,
               children: [
-                // 단일 선택으로 변경
                 ...['편도', '왕복', '독차', '혼적', '1인 동승', '긴급'].map((label) {
                   return buildChoiceChip(
                     label,
@@ -543,12 +538,11 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
               ],
             ),
 
-            // 승차방법 섹션 수정
+            // 승차방법 수정
             buildSectionTitle('승차방법'),
             Wrap(
               spacing: 8,
               children: [
-                // 단일 선택 및 선택지 변경
                 ..._boardingMethods.map((label) {
                   return buildChoiceChip(
                     label,
@@ -561,12 +555,11 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
               ],
             ),
 
-            // 하차방법 섹션 수정
+            // 하차방법 수정
             buildSectionTitle('하차방법'),
             Wrap(
               spacing: 8,
               children: [
-                // 단일 선택 및 선택지 변경
                 ..._unloadingMethods.map((label) {
                   return buildChoiceChip(
                     label,

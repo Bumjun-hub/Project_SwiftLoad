@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart'; // For number formatting
-import 'package:flutter_app/order_list_page.dart'; // order_list_page 임포트 추가
+import 'package:intl/intl.dart';
+import 'package:flutter_app/order_list_page.dart';
 
 class PaymentPage extends StatefulWidget {
   final Map<String, dynamic> orderData;
@@ -15,9 +15,9 @@ class PaymentPage extends StatefulWidget {
 
 class _PaymentPageState extends State<PaymentPage> {
   final TextEditingController _depositorNameController = TextEditingController();
-  String _paymentStatus = '대기중'; // Initial status (내부적으로만 사용)
-  String? _selectedBank; // 선택된 은행
-  bool _disclaimerAccepted = false; // 주의사항 동의 체크박스 상태
+  String _paymentStatus = '대기중';
+  String? _selectedBank;
+  bool _disclaimerAccepted = false;
 
   final List<String> _banks = [
     '기업은행',
@@ -45,13 +45,11 @@ class _PaymentPageState extends State<PaymentPage> {
       return;
     }
 
-    // Simulate payment processing
     setState(() {
       _paymentStatus = '결제 처리 중...';
     });
 
     try {
-      // Determine the amount to save
       int amountToSave = 0;
       final dynamic priceValue = widget.orderData['price'];
       if (priceValue is num) {
@@ -66,11 +64,10 @@ class _PaymentPageState extends State<PaymentPage> {
         }
       }
 
-      // Save payment details to Firestore
       await FirebaseFirestore.instance.collection('payments').add({
         'orderId': widget.orderData['orderId'],
         'userId': FirebaseAuth.instance.currentUser?.uid,
-        'amount': amountToSave, // Use the parsed integer amount
+        'amount': amountToSave, //
         'depositorName': _depositorNameController.text,
         'selectedBank': _selectedBank, // 선택된 은행 저장
         'timestamp': FieldValue.serverTimestamp(),
@@ -87,7 +84,7 @@ class _PaymentPageState extends State<PaymentPage> {
       );
 
       // 팝업 표시 후 order_list_page로 이동
-      // pushReplacement를 사용하여 뒤로가기 시 결제 페이지로 돌아오지 않도록 합니다.
+      // 뒤로가기 시 결제 페이지로 돌아오지 않도록 합니다.
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const OrderListPage()),
@@ -106,18 +103,15 @@ class _PaymentPageState extends State<PaymentPage> {
   @override
   Widget build(BuildContext context) {
     final NumberFormat currencyFormatter = NumberFormat('#,###', 'ko_KR');
-    final dynamic priceValue = widget.orderData['price']; // Get the raw price value
+    final dynamic priceValue = widget.orderData['price'];
 
-    int price = 0; // Default price
+    int price = 0;
     if (priceValue is num) {
-      price = priceValue.toInt(); // If it's already a number, convert to int
-      print('DEBUG (PaymentPage): Price received as num: $priceValue, converted to int: $price'); // 디버그 출력
+      price = priceValue.toInt();
     } else if (priceValue is String) {
-      // If it's a string, clean and parse it
       final String cleanedPriceString = priceValue.replaceAll(RegExp(r'[^\d.]'), '').trim();
       try {
         price = double.parse(cleanedPriceString).toInt();
-        print('DEBUG (PaymentPage): Price received as string: "$priceValue", cleaned: "$cleanedPriceString", converted to int: $price'); // 디버그 출력
       } catch (e) {
         print('ERROR: Failed to parse price for display: "$cleanedPriceString". Error: $e');
         price = 0; // Fallback to 0 on parsing error
@@ -125,7 +119,6 @@ class _PaymentPageState extends State<PaymentPage> {
     } else {
       print('DEBUG (PaymentPage): Price received as unexpected type: ${priceValue.runtimeType}, value: $priceValue'); // 디버그 출력
     }
-    // If priceValue is neither num nor String, price remains 0.
 
     final String formattedPrice = currencyFormatter.format(price);
 
@@ -142,7 +135,6 @@ class _PaymentPageState extends State<PaymentPage> {
             Text('주문 금액: $formattedPrice원', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
 
-            // 회사 은행 정보 섹션 (노란색 테두리로 감싸기)
             Container(
               padding: const EdgeInsets.all(16.0),
               decoration: BoxDecoration(
@@ -288,8 +280,8 @@ class _PaymentPageState extends State<PaymentPage> {
                   _disclaimerAccepted = newValue ?? false;
                 });
               },
-              controlAffinity: ListTileControlAffinity.leading, // 체크박스를 왼쪽에 배치
-              activeColor: Colors.amber, // 체크박스 활성화 시 색상
+              controlAffinity: ListTileControlAffinity.leading,
+              activeColor: Colors.amber,
             ),
             const SizedBox(height: 20),
 
@@ -301,7 +293,7 @@ class _PaymentPageState extends State<PaymentPage> {
                   backgroundColor: Colors.amber,
                   padding: const EdgeInsets.symmetric(vertical: 15),
                 ),
-                child: const Text( // 텍스트를 '결제하기'로 고정
+                child: const Text(
                   '결제하기',
                   style: TextStyle(fontSize: 18, color: Colors.black),
                 ),
