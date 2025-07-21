@@ -11,7 +11,7 @@ function Header({ onSidebarToggle, user }) {
   // 로그아웃 버튼 클릭시 실행
   const handleLogout = async () => {
     await signOut(auth); // 파이어베이스 로그아웃
-    navigate('/login');  // 로그아웃 후 로그인페이지로 이동(원하면 다른 페이지로 이동 가능)
+     window.location.reload(); 
   };
 
   return (
