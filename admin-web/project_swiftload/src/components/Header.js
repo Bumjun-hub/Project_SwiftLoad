@@ -20,7 +20,7 @@ function Header({ onSidebarToggle, user }) {
         <span className="hamburger-icon">&#9776;</span>
       </button>
       <div className="header-logo">
-        <img src="/logo_swiftload.png" alt="SwiftLoad 로고" height={40} />
+        <img src="/swiftload.png" alt="SwiftLoad 로고" height={40} />
       </div>
       <div style={{ position: 'absolute', right: 24, top: 14 }}>
         {/* 로그인 안 했을 때는 로그인 버튼 */}
