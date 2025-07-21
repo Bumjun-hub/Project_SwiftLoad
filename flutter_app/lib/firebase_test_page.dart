@@ -1,100 +1,205 @@
+import 'dart:io'; // 모바일에서만 사용
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-// 여긴 firebase에 값이 들어가는지 테스트 한 페이지에요
-// 여기에 있는 폼을 사용하면 좀 더 편할수도 있어요!><
-// 테스트페이지 기준으로 firebase에 값은 잘 들어가고 있습니다~
-// 테스트 전용 페이지 위젯
- class FirebaseTestPage extends StatefulWidget {
-     const FirebaseTestPage({super.key});
+class FirebaseTestPage extends StatefulWidget {
+  const FirebaseTestPage({super.key});
 
-     @override
-     State<FirebaseTestPage> createState() => _FirebaseTestPageState();
-   }
+  @override
+  State<FirebaseTestPage> createState() => _FirebaseTestPageState();
+}
 
- class _FirebaseTestPageState extends State<FirebaseTestPage> {
-     // 입력 필드를 제어하기 위한 컨트롤러
-     final TextEditingController _nameController = TextEditingController();
-     final TextEditingController _phoneController = TextEditingController();
-     bool _isLoading = false; // 로딩 상태를 관리할 변수
+class _FirebaseTestPageState extends State<FirebaseTestPage> {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
 
-     // 데이터 전송 함수
-     Future<void> _sendDataToFirebase() async {
-       // 이름이나 연락처가 비어있으면 함수 종료
-       if (_nameController.text.isEmpty || _phoneController.text.isEmpty) {
-         ScaffoldMessenger.of(context).showSnackBar(
-           const SnackBar(content: Text('이름과 연락처를 모두 입력해주세요.')),
-         );
-         return;
-       }
+  XFile? _image;
+  final ImagePicker _picker = ImagePicker();
+  String? _uploadedImageUrl;
+  bool _isUploading = false;
 
-       // 로딩 시작
-       setState(() {
-         _isLoading = true;
-       });
+  // 갤러리에서 이미지를 선택하는 함수
+  Future<void> _pickImage() async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile != null) {
+        setState(() {
+          _image = pickedFile;
+          _uploadedImageUrl = null;
+        });
+      }
+    } catch (e) {
+      print("이미지 선택 오류: $e");
+    }
+  }
 
-       try {
-         // 'test_data' 라는 컬렉션에 데이터를 추가합니다.
-         // 이 컬렉션은 자동으로 생성됩니다.
-         await FirebaseFirestore.instance.collection('test_data').add({
-           'name': _nameController.text,
-          'phone': _phoneController.text,
-          'createdAt': FieldValue.serverTimestamp(), // 현재 서버 시간 기록
+  // 데이터를 Firestore에 저장하는 함수 (웹/모바일 호환)
+  Future<void> _saveData() async {
+    if (_nameController.text.isEmpty || _phoneController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("이름과 전화번호를 모두 입력해주세요.")),
+      );
+      return;
+    }
+
+    setState(() {
+      _isUploading = true;
+    });
+
+    String? imageUrl;
+    /*
+    if (_image != null) {
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        // 로그인한 사용자가 있으면 그 사용자 ID를, 없으면 'guest_uploads'를 임시로 사용
+        final String userId = user?.uid ?? 'guest_uploads';
+
+        final String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final Reference storageRef = FirebaseStorage.instance
+            .ref()
+            .child('user_data')
+            .child(userId)
+            .child(fileName);
+
+        // --- 웹/모바일 분기 처리 ---
+        if (kIsWeb) {
+          // 웹 환경일 경우
+          final imageData = await _image!.readAsBytes();
+          final UploadTask uploadTask = storageRef.putData(imageData);
+          final TaskSnapshot snapshot = await uploadTask;
+          imageUrl = await snapshot.ref.getDownloadURL();
+        } else {
+          // 모바일 환경일 경우
+          final UploadTask uploadTask = storageRef.putFile(File(_image!.path));
+          final TaskSnapshot snapshot = await uploadTask;
+          imageUrl = await snapshot.ref.getDownloadURL();
+        }
+        // --------------------------
+
+        setState(() {
+          _uploadedImageUrl = imageUrl;
         });
 
-         // 성공 메시지 표시
-         ScaffoldMessenger.of(context).showSnackBar(
-           const SnackBar(content: Text('데이터 전송 성공! Firebase 콘솔을 확인하세요.')),
-         );
-         // 성공 후 이전 화면으로 돌아가기
-         Navigator.pop(context);
+      } catch (e) {
+        print("이미지 업로드 오류: $e");
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("이미지 업로드 실패: $e")));
+        setState(() { _isUploading = false; });
+        return;
+      }
+    }
+    */
 
-       } catch (e) {
-         // 실패(오류) 메시지 표시
-         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('오류 발생: $e')),
-        );
-       } finally {
-         // 로딩 종료
-         setState(() {
-           _isLoading = false;
-         });
-       }
-     }
+    try {
+      await FirebaseFirestore.instance.collection('users').add({
+        'name': _nameController.text,
+        'phone': _phoneController.text,
+        'profileImageUrl': imageUrl,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
 
-     @override
-     Widget build(BuildContext context) {
-       return Scaffold(
-         appBar: AppBar(
-           title: const Text('Firebase 연결 테스트'),
-           backgroundColor: Colors.blueGrey,
-         ),
-         body: Padding(
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("데이터가 성공적으로 저장되었습니다.")));
+      _nameController.clear();
+      _phoneController.clear();
+      setState(() {
+        _image = null;
+        _uploadedImageUrl = null;
+      });
+
+    } catch (e) {
+      print("Firestore 저장 오류: $e");
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("데이터 저장 실패: $e")));
+    } finally {
+      setState(() {
+        _isUploading = false;
+      });
+    }
+  }
+
+  // --- 선택된 이미지를 보여주는 위젯 (웹/모바일 호환) ---
+  Widget _buildImageWidget() {
+    if (_image == null) {
+      return const Center(child: Text("프로필 사진"));
+    }
+
+    if (kIsWeb) {
+      // 웹 환경일 경우
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(9),
+        child: Image.network(_image!.path, fit: BoxFit.cover), // 웹에서는 XFile.path가 URL처럼 작동
+      );
+    } else {
+      // 모바일 환경일 경우
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(9),
+        child: Image.file(File(_image!.path), fit: BoxFit.cover),
+      );
+    }
+  }
+  // ------------------------------------------------
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Firestore & Storage 테스트"),
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-               TextField(
-                 controller: _nameController,
-                 decoration: const InputDecoration(labelText: '이름'),
-               ),
-               const SizedBox(height: 16),
+              Container(
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: _buildImageWidget(), // 수정된 이미지 위젯 호출
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: _pickImage,
+                child: const Text("사진 선택"),
+              ),
+              const SizedBox(height: 20),
               TextField(
-                 controller: _phoneController,
-                 decoration: const InputDecoration(labelText: '연락처'),
+                controller: _nameController,
+                decoration: const InputDecoration(labelText: '이름', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _phoneController,
+                decoration: const InputDecoration(labelText: '전화번호', border: OutlineInputBorder()),
                 keyboardType: TextInputType.phone,
-               ),
-               const SizedBox(height: 32),
-               // _isLoading이 true이면 로딩 인디케이터를, false이면 버튼을 보여줌
-               _isLoading
-                   ? const Center(child: CircularProgressIndicator())
-                   : ElevatedButton(
-                      onPressed: _sendDataToFirebase,
-                       child: const Text('데이터 전송'),
-                     ),
-             ],
-           ),
-         ),
-       );
-     }
-   }
+              ),
+              const SizedBox(height: 20),
+              if (_isUploading)
+                const CircularProgressIndicator()
+              else
+                ElevatedButton(
+                  onPressed: _saveData,
+                  child: const Text('정보 저장하기'),
+                ),
+              if (_uploadedImageUrl != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 20.0),
+                  child: Column(
+                    children: [
+                      const Text("성공적으로 업로드된 이미지:"),
+                      const SizedBox(height: 10),
+                      Image.network(_uploadedImageUrl!, height: 100),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
