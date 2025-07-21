@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore 패키지 import
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DriverJoinPage extends StatefulWidget {
   const DriverJoinPage({super.key});
@@ -20,14 +20,14 @@ class _DriverJoinPageState extends State<DriverJoinPage> {
   final _vehicleNumberController = TextEditingController();
   final _notesController = TextEditingController();
 
-  // 드롭다운 메뉴를 위한 상태 변수
+  // 메뉴
   String? _selectedVehicleSize;
   final List<String> _vehicleSizes = ['1톤','1.2톤', '2.5톤', '3.5톤', '5톤','11톤'];
 
   String? _selectedVehicleType;
   final List<String> _vehicleTypes = ['카고', '윙바디', '냉장탑', '냉동탑', '리프트','리프트윙', '플러스 카고', '플러스 윙바디'];
 
-  String? _selectedBank; // 입금은행 드롭다운 선택 값
+  String? _selectedBank; // 입금은행
   final List<String> _bankList = [
     '농협', '국민', '하나', '신한', '카카오', '우리', '우체국', '새마을', '수협', '기업'
   ];
@@ -35,14 +35,13 @@ class _DriverJoinPageState extends State<DriverJoinPage> {
   bool _isLoading = false;
   bool _isPledgeAgreed = false;
 
-  // Firestore에 데이터를 저장하는 함수
   Future<void> _saveDriverInfo() async {
     // 필수 필드 유효성 검사
     if (_nameController.text.isEmpty ||
         _rrnController.text.isEmpty ||
         _phoneController.text.isEmpty ||
-        _selectedBank == null || // 입금은행 유효성 검사 추가
-        _accountNumberController.text.isEmpty || // 입금계좌번호 유효성 검사 추가
+        _selectedBank == null ||
+        _accountNumberController.text.isEmpty ||
         _selectedVehicleSize == null ||
         _selectedVehicleType == null ||
         _vehicleNumberController.text.isEmpty) {
@@ -69,8 +68,8 @@ class _DriverJoinPageState extends State<DriverJoinPage> {
         'name': _nameController.text,
         'rrn': _rrnController.text,
         'phone': _phoneController.text,
-        'bankName': _selectedBank, // 입금은행 저장 추가
-        'accountNumber': _accountNumberController.text, // 입금계좌번호 저장 추가
+        'bankName': _selectedBank,
+        'accountNumber': _accountNumberController.text,
         'vehicleSize': _selectedVehicleSize,
         'vehicleType': _selectedVehicleType,
         'vehicleNumber': _vehicleNumberController.text,
@@ -204,8 +203,8 @@ class _DriverJoinPageState extends State<DriverJoinPage> {
     _nameController.dispose();
     _rrnController.dispose();
     _phoneController.dispose();
-    _bankNameController.dispose(); // dispose 추가
-    _accountNumberController.dispose(); // dispose 추가
+    _bankNameController.dispose();
+    _accountNumberController.dispose();
     _addressController.dispose();
     _addressDetailController.dispose();
     _vehicleNumberController.dispose();
