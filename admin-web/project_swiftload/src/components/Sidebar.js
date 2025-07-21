@@ -26,6 +26,11 @@ function Sidebar({ open }) {
           기사님 요청
         </Link>
       </div>
+      <div>
+        <Link to="/payments" className={getActive('/payments')}>
+          결제 관리
+        </Link>
+      </div>
     </nav>
   );
 }
