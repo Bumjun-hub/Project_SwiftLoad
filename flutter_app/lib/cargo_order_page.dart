@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'order_list_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore 패키지 import
+import 'package:intl/intl.dart'; // 날짜/시간 포맷팅을 위해 추가
+import 'package:flutter_app/payment_page.dart'; // PaymentPage 임포트
+import 'package:firebase_auth/firebase_auth.dart'; // FirebaseAuth 추가
 
 class CargoOrderPage extends StatefulWidget {
   const CargoOrderPage({super.key});
@@ -12,6 +16,7 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
   final List<String> tonList = [
     '1톤 트럭',
     '1.2톤 트럭',
+    '1.5톤 트럭', // 1.5톤 트럭 추가
     '2.5톤 트럭',
     '3.5톤 트럭',
     '5톤 트럭',
@@ -26,20 +31,36 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
     '리프트윙',
     '플러스 카고',
     '플러스 윙바디',
-    '플러스 축차',
-    '플러스 축차 윙바디',
   ];
   bool showTonTab = true; // 현재 선택된 탭 (톤 트럭 or 차종)
   bool isDropdownOpen = false; // 드롭다운 열림 여부
   String? selectedTon;
   String? selectedCarType;
 
-  // 기타 상태들
-  bool isGoodsSelected = false;
-  String quantity = '';
-  List<String> options = [];
-  String boardingMethod = '';
-  String unloadingMethod = '';
+  // 물품 선택 관련 상태 추가
+  String? _selectedItemType;
+  final List<String> _itemTypes = ['팔레트', '박스', '가구집기', '기타'];
+  final TextEditingController _itemQuantityController = TextEditingController();
+  final TextEditingController _otherItemNameController = TextEditingController();
+
+  // 시간 선택 관련 상태 추가
+  String? _pickupTimeOption; // '지금 상차' 또는 '예약'
+  DateTime? _pickupDateTime; // 예약 시 선택된 날짜와 시간
+  String? _dropoffTimeOption; // '가는대로 하차' 또는 '예약'
+  DateTime? _dropoffDateTime; // 예약 시 선택된 날짜와 시간
+
+  // 옵션, 승차방법, 하차방법 단일 선택 상태 추가
+  String? _selectedOption; // 옵션 단일 선택
+  String? _selectedBoardingMethod; // 승차방법 단일 선택
+  String? _selectedUnloadingMethod; // 하차방법 단일 선택
+
+  // 승차방법, 하차방법 선택지 목록
+  final List<String> _boardingMethods = [
+    '고객님이 상차', '지게차이용', '기사님이 혼자', '고객님과 같이'
+  ];
+  final List<String> _unloadingMethods = [
+    '고객님이 하차', '지게차이용', '기사님이 혼자', '고객님과 같이',
+  ];
 
   // 입력 컨트롤러들
   final TextEditingController departureAddressController = TextEditingController();
@@ -53,6 +74,9 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
   final TextEditingController arrivalNameController = TextEditingController();
   final TextEditingController arrivalContactController = TextEditingController();
   final TextEditingController contentController = TextEditingController();
+
+  bool _isLoading = false; // 로딩 상태 추가
+
   final orangeBorder = OutlineInputBorder(
     borderRadius: BorderRadius.circular(4),
     borderSide: const BorderSide(
@@ -60,6 +84,197 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
       width: 2,
     ),
   );
+
+  // 날짜와 시간을 선택하는 헬퍼 함수
+  Future<DateTime?> _selectDateTime(BuildContext context) async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (pickedDate == null) return null;
+
+    final TimeOfDay? pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (pickedTime == null) return null;
+
+    return DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+  }
+
+  // 운임 계산 함수
+  double _calculatePrice() {
+    double basePrice = 0.0;
+
+    // 1. 차량 톤 별 기본 가격
+    final Map<String, double> tonBasePrices = {
+      '1톤 트럭': 50000.0,
+      '1.2톤 트럭': 50000.0,
+      '1.5톤 트럭': 70000.0,
+      '2.5톤 트럭': 80000.0, // 기존 값 유지
+      '3.5톤 트럭': 100000.0, // 기존 값 유지
+      '5톤 트럭': 110000.0,
+      '11톤 트럭': 200000.0,
+    };
+    basePrice = tonBasePrices[selectedTon] ?? 0.0; // 선택된 톤에 해당하는 기본 가격 적용
+
+    // 2. 왕복 선택 시 X2
+    const double roundTripMultiplier = 2.0;
+    if (_selectedOption == '왕복') {
+      basePrice *= roundTripMultiplier;
+    }
+
+    // 3. 물건 갯수가 20개 이상이면 3만원 추가
+    const double quantityAddOn = 30000.0;
+    if (_selectedItemType != '기타') { // 기타가 아닐 때만 수량 체크
+      int quantity = int.tryParse(_itemQuantityController.text) ?? 0;
+      if (quantity >= 20) {
+        basePrice += quantityAddOn;
+      }
+    }
+
+    // 4. 지게차 이용 선택 시 5만원 추가
+    // 승차방법 또는 하차방법에 '지게차이용'이 포함된 경우
+    const double forkliftAddOn = 50000.0;
+    if (_selectedBoardingMethod == '지게차이용' || _selectedUnloadingMethod == '지게차이용') {
+      basePrice += forkliftAddOn;
+    }
+
+    return basePrice;
+  }
+
+  // Firestore에 화물 신청 정보를 저장하는 함수
+  Future<void> _saveOrderInfo() async {
+    // 필수 필드 유효성 검사 (필요에 따라 추가/수정)
+    if (selectedTon == null ||
+        selectedCarType == null ||
+        _selectedItemType == null ||
+        (_selectedItemType != '기타' && _itemQuantityController.text.isEmpty) ||
+        (_selectedItemType == '기타' && _otherItemNameController.text.isEmpty) ||
+        _pickupTimeOption == null || // 상차시간 선택 여부
+        _dropoffTimeOption == null || // 하차시간 선택 여부
+        _selectedOption == null || // 옵션 선택 여부 추가
+        _selectedBoardingMethod == null || // 승차방법 선택 여부 추가
+        _selectedUnloadingMethod == null || // 하차방법 선택 여부 추가
+        departureAddressController.text.isEmpty ||
+        departureNameController.text.isEmpty ||
+        departureContactController.text.isEmpty ||
+        arrivalAddressController.text.isEmpty ||
+        arrivalNameController.text.isEmpty ||
+        arrivalContactController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('필수 항목을 모두 입력해주세요.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    String itemDetails = '';
+    if (_selectedItemType == '기타') {
+      itemDetails = '기타: ${_otherItemNameController.text}';
+    } else {
+      itemDetails = '$_selectedItemType: ${_itemQuantityController.text}개';
+    }
+
+    final double calculatedPrice = _calculatePrice(); // 운임 계산
+
+    try {
+      // Firestore에 데이터 저장 및 문서 참조 가져오기
+      DocumentReference docRef = await FirebaseFirestore.instance.collection('estimates').add({
+        'selectedTon': selectedTon,
+        'selectedCarType': selectedCarType,
+        'itemType': _selectedItemType,
+        'itemDetails': itemDetails, // 물품 상세 정보
+        'pickupTimeOption': _pickupTimeOption, // 상차시간 옵션
+        'pickupDateTime': _pickupDateTime, // 상차 예약 시간 (null 가능)
+        'dropoffTimeOption': _dropoffTimeOption, // 하차시간 옵션
+        'dropoffDateTime': _dropoffDateTime, // 하차 예약 시간 (null 가능)
+        'selectedOption': _selectedOption, // 옵션 단일 선택 저장
+        'selectedBoardingMethod': _selectedBoardingMethod, // 승차방법 단일 선택 저장
+        'selectedUnloadingMethod': _selectedUnloadingMethod, // 하차방법 단일 선택 저장
+        'departureAddress': departureAddressController.text,
+        'departureDetail': departureDetailController.text,
+        'departureCompany': departureCompanyController.text,
+        'departureName': departureNameController.text,
+        'departureContact': departureContactController.text,
+        'arrivalAddress': arrivalAddressController.text,
+        'arrivalDetail': arrivalDetailController.text,
+        'arrivalCompany': arrivalCompanyController.text,
+        'arrivalName': arrivalNameController.text,
+        'arrivalContact': arrivalContactController.text,
+        'content': contentController.text,
+        'calculatedPrice': calculatedPrice, // 계산된 운임 저장
+        'createdAt': FieldValue.serverTimestamp(),
+        'userId': FirebaseAuth.instance.currentUser?.uid, // 현재 사용자 UID 저장
+        'status': '견적대기', // 초기 상태
+      });
+
+      // PaymentPage로 전달할 orderData 맵 생성
+      Map<String, dynamic> orderInfoForPayment = {
+        'orderId': docRef.id, // Firestore 문서 ID를 orderId로 사용
+        'price': calculatedPrice.toInt(), // 가격을 문자열로 전달
+        'userId': FirebaseAuth.instance.currentUser?.uid,
+        'hospitalName': departureAddressController.text, // 예시: 출발지 주소를 병원 이름으로 전달
+        'weight': itemDetails, // 예시: 물품 상세 정보를 무게로 전달
+        'status': '견적대기', // PaymentPage에서 사용할 초기 상태
+      };
+
+      // 저장 성공 후 결제 페이지로 이동
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => PaymentPage(orderData: orderInfoForPayment)), // orderData 전달
+      );
+
+      // 성공 후 필드 초기화
+      departureAddressController.clear();
+      departureDetailController.clear();
+      departureCompanyController.clear();
+      departureNameController.clear();
+      departureContactController.clear();
+      arrivalAddressController.clear();
+      arrivalDetailController.clear();
+      arrivalCompanyController.clear();
+      arrivalNameController.clear();
+      arrivalContactController.clear();
+      contentController.clear();
+      _itemQuantityController.clear();
+      _otherItemNameController.clear();
+
+      setState(() {
+        selectedTon = null;
+        selectedCarType = null;
+        _selectedItemType = null;
+        _pickupTimeOption = null; // 초기화
+        _pickupDateTime = null; // 초기화
+        _dropoffTimeOption = null; // 초기화
+        _dropoffDateTime = null; // 초기화
+        _selectedOption = null; // 초기화
+        _selectedBoardingMethod = null; // 초기화
+        _selectedUnloadingMethod = null; // 초기화
+      });
+
+    } catch (e) {
+      print("Firestore 저장 오류: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("화물 신청에 실패했습니다. 오류: $e")),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -74,6 +289,8 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
     arrivalNameController.dispose();
     arrivalContactController.dispose();
     contentController.dispose();
+    _itemQuantityController.dispose();
+    _otherItemNameController.dispose();
     super.dispose();
   }
 
@@ -97,28 +314,26 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
     );
   }
 
-  Widget _vehicleTab(String title, bool selected, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-        decoration: BoxDecoration(
-          color: selected ? Colors.amber.shade200 : Colors.white,
-          border: Border.all(color: Colors.amber, width: 2),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
+  // 시간 선택 버튼을 위한 위젯 (재사용성을 위해 분리)
+  Widget _buildTimeOptionButton({
+    required String label,
+    required String optionValue,
+    required String? selectedOption,
+    required VoidCallback onPressed,
+    String? displayDateTime,
+  }) {
+    final bool isSelected = selectedOption == optionValue;
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isSelected ? Colors.amber : Colors.grey[200], // 선택 시 진한 노란색
+        foregroundColor: isSelected ? Colors.white : Colors.black, // 선택 시 흰색 글씨
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        side: BorderSide(color: isSelected ? Colors.amber : Colors.grey.shade400, width: 1.5),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
+      child: Text(displayDateTime ?? label),
     );
-  }
-
-  void toggleOption(String option) {
-    setState(() {
-      options.contains(option) ? options.remove(option) : options.add(option);
-    });
   }
 
   @override
@@ -135,7 +350,6 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 차량 선택
             // 차량선택 섹션
             buildSectionTitle('차량선택'),
             Row(
@@ -150,8 +364,8 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
                     dropdownColor: Colors.white,
                     decoration: InputDecoration(
                       hintText: '톤 트럭',
-                      border: orangeBorder,           // 기본 테두리
-                      enabledBorder: orangeBorder,    // 비활성 테두리
+                      border: orangeBorder,
+                      enabledBorder: orangeBorder,
                       focusedBorder: orangeBorder,
                       isDense: true,
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -169,8 +383,8 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
                     dropdownColor: Colors.white,
                     decoration: InputDecoration(
                       hintText: '차종',
-                      border: orangeBorder,           // 기본 테두리
-                      enabledBorder: orangeBorder,    // 비활성 테두리
+                      border: orangeBorder,
+                      enabledBorder: orangeBorder,
                       focusedBorder: orangeBorder,
                       isDense: true,
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -181,84 +395,187 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
             ),
             const SizedBox(height: 20),
 
-
-            // 아래는 생략 없이 기존 그대로 유지
+            // 물품정보 섹션
             buildSectionTitle('물품정보'),
-            Row(
-              children: [
-                ElevatedButton(
-                  onPressed: () => setState(() => isGoodsSelected = !isGoodsSelected),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isGoodsSelected ? Colors.amber : Colors.grey[200],
-                    foregroundColor: isGoodsSelected ? Colors.black : Colors.grey[700],
-                  ),
-                  child: const Text('물품선택'),
-                ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 150,
-                  child: TextField(
-                    decoration: const InputDecoration(
-                      hintText: '수량 입력 / 선택',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    onChanged: (val) => quantity = val,
-                  ),
-                ),
-              ],
+            DropdownButtonFormField<String>(
+              value: _selectedItemType,
+              decoration: InputDecoration(
+                labelText: '물품 종류',
+                hintText: '물품 종류를 선택하세요',
+                border: orangeBorder,
+                enabledBorder: orangeBorder,
+                focusedBorder: orangeBorder,
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              items: _itemTypes.map((String type) {
+                return DropdownMenuItem<String>(
+                  value: type,
+                  child: Text(type),
+                );
+              }).toList(),
+              onChanged: (newValue) {
+                setState(() {
+                  _selectedItemType = newValue;
+                  _itemQuantityController.clear();
+                  _otherItemNameController.clear();
+                });
+              },
             ),
+            const SizedBox(height: 12),
 
+            if (_selectedItemType != null)
+              _selectedItemType == '기타'
+                  ? TextField(
+                controller: _otherItemNameController,
+                decoration: InputDecoration(
+                  hintText: '물품명 입력',
+                  border: orangeBorder,
+                  enabledBorder: orangeBorder,
+                  focusedBorder: orangeBorder,
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              )
+                  : TextField(
+                controller: _itemQuantityController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: '수량 입력',
+                  border: orangeBorder,
+                  enabledBorder: orangeBorder,
+                  focusedBorder: orangeBorder,
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              ),
+            const SizedBox(height: 20),
+
+            // 상차시간 섹션
             buildSectionTitle('상차시간'),
             Wrap(
               spacing: 8,
               children: [
-                ElevatedButton(onPressed: () {}, child: const Text('지금 상차')),
-                ElevatedButton(onPressed: () {}, child: const Text('예약하기')),
+                _buildTimeOptionButton(
+                  label: '지금 상차',
+                  optionValue: '지금 상차',
+                  selectedOption: _pickupTimeOption,
+                  onPressed: () {
+                    setState(() {
+                      _pickupTimeOption = '지금 상차';
+                      _pickupDateTime = null;
+                    });
+                  },
+                ),
+                _buildTimeOptionButton(
+                  label: _pickupDateTime != null
+                      ? DateFormat('MM/dd HH:mm').format(_pickupDateTime!) // 날짜/시간 포맷
+                      : '예약하기',
+                  optionValue: '예약',
+                  selectedOption: _pickupTimeOption,
+                  onPressed: () async {
+                    final DateTime? selected = await _selectDateTime(context);
+                    if (selected != null) {
+                      setState(() {
+                        _pickupDateTime = selected;
+                        _pickupTimeOption = '예약';
+                      });
+                    }
+                  },
+                  displayDateTime: _pickupDateTime != null
+                      ? DateFormat('MM/dd HH:mm').format(_pickupDateTime!) : null,
+                ),
               ],
             ),
 
+            // 하차시간 섹션
             buildSectionTitle('하차시간'),
             Wrap(
               spacing: 8,
               children: [
-                ElevatedButton(onPressed: () {}, child: const Text('가는대로 하차')),
-                ElevatedButton(onPressed: () {}, child: const Text('예약하기')),
+                _buildTimeOptionButton(
+                  label: '가는대로 하차',
+                  optionValue: '가는대로 하차',
+                  selectedOption: _dropoffTimeOption,
+                  onPressed: () {
+                    setState(() {
+                      _dropoffTimeOption = '가는대로 하차';
+                      _dropoffDateTime = null;
+                    });
+                  },
+                ),
+                _buildTimeOptionButton(
+                  label: _dropoffDateTime != null
+                      ? DateFormat('MM/dd HH:mm').format(_dropoffDateTime!) // 날짜/시간 포맷
+                      : '예약하기',
+                  optionValue: '예약',
+                  selectedOption: _dropoffTimeOption,
+                  onPressed: () async {
+                    final DateTime? selected = await _selectDateTime(context);
+                    if (selected != null) {
+                      setState(() {
+                        _dropoffDateTime = selected;
+                        _dropoffTimeOption = '예약';
+                      });
+                    }
+                  },
+                  displayDateTime: _dropoffDateTime != null
+                      ? DateFormat('MM/dd HH:mm').format(_dropoffDateTime!) : null,
+                ),
               ],
             ),
 
+            // 옵션 섹션 수정
             buildSectionTitle('옵션'),
             Wrap(
               spacing: 8,
               children: [
-                buildChoiceChip('편도', options.contains('편도'), () => toggleOption('편도')),
-                buildChoiceChip('왕복', options.contains('왕복'), () => toggleOption('왕복')),
-                buildChoiceChip('독차', options.contains('독차'), () => toggleOption('독차')),
-                buildChoiceChip('혼적', options.contains('혼적'), () => toggleOption('혼적')),
-                buildChoiceChip('1인 동승', options.contains('1인 동승'), () => toggleOption('1인 동승')),
-                buildChoiceChip('긴급', options.contains('긴급'), () => toggleOption('긴급')),
+                // 단일 선택으로 변경
+                ...['편도', '왕복', '독차', '혼적', '1인 동승', '긴급'].map((label) {
+                  return buildChoiceChip(
+                    label,
+                    _selectedOption == label,
+                        () => setState(() {
+                      _selectedOption = label;
+                    }),
+                  );
+                }).toList(),
               ],
             ),
 
+            // 승차방법 섹션 수정
             buildSectionTitle('승차방법'),
             Wrap(
               spacing: 8,
               children: [
-                buildChoiceChip('고객님이 상차', boardingMethod == '고객님이 상차',
-                        () => setState(() => boardingMethod = '고객님이 상차')),
-                buildChoiceChip('고객님이 지게차', boardingMethod == '고객님이 지게차',
-                        () => setState(() => boardingMethod = '고객님이 지게차')),
+                // 단일 선택 및 선택지 변경
+                ..._boardingMethods.map((label) {
+                  return buildChoiceChip(
+                    label,
+                    _selectedBoardingMethod == label,
+                        () => setState(() {
+                      _selectedBoardingMethod = label;
+                    }),
+                  );
+                }).toList(),
               ],
             ),
 
+            // 하차방법 섹션 수정
             buildSectionTitle('하차방법'),
             Wrap(
               spacing: 8,
               children: [
-                buildChoiceChip('고객님이 하차', unloadingMethod == '고객님이 하차',
-                        () => setState(() => unloadingMethod = '고객님이 하차')),
-                buildChoiceChip('고객님이 지게차', unloadingMethod == '고객님이 지게차',
-                        () => setState(() => unloadingMethod = '고객님이 지게차')),
+                // 단일 선택 및 선택지 변경
+                ..._unloadingMethods.map((label) {
+                  return buildChoiceChip(
+                    label,
+                    _selectedUnloadingMethod == label,
+                        () => setState(() {
+                      _selectedUnloadingMethod = label;
+                    }),
+                  );
+                }).toList(),
               ],
             ),
 
@@ -268,9 +585,11 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
                 Expanded(
                   child: TextField(
                     controller: departureAddressController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: '주소 *',
-                      border: OutlineInputBorder(),
+                      border: orangeBorder,
+                      enabledBorder: orangeBorder,
+                      focusedBorder: orangeBorder,
                       isDense: true,
                     ),
                   ),
@@ -284,9 +603,11 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
             const SizedBox(height: 8),
             TextField(
               controller: departureDetailController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: '상세주소 *',
-                border: OutlineInputBorder(),
+                border: orangeBorder,
+                enabledBorder: orangeBorder,
+                focusedBorder: orangeBorder,
                 isDense: true,
               ),
             ),
@@ -296,9 +617,11 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
                 Expanded(
                   child: TextField(
                     controller: departureCompanyController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: '상호 (선택입력)',
-                      border: OutlineInputBorder(),
+                      border: orangeBorder,
+                      enabledBorder: orangeBorder,
+                      focusedBorder: orangeBorder,
                       isDense: true,
                     ),
                   ),
@@ -307,9 +630,11 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
                 Expanded(
                   child: TextField(
                     controller: departureNameController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: '이름 *',
-                      border: OutlineInputBorder(),
+                      border: orangeBorder,
+                      enabledBorder: orangeBorder,
+                      focusedBorder: orangeBorder,
                       isDense: true,
                     ),
                   ),
@@ -319,9 +644,11 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
             const SizedBox(height: 8),
             TextField(
               controller: departureContactController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: '연락처 *',
-                border: OutlineInputBorder(),
+                border: orangeBorder,
+                enabledBorder: orangeBorder,
+                focusedBorder: orangeBorder,
                 isDense: true,
               ),
             ),
@@ -333,9 +660,11 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
                 Expanded(
                   child: TextField(
                     controller: arrivalAddressController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: '주소 *',
-                      border: OutlineInputBorder(),
+                      border: orangeBorder,
+                      enabledBorder: orangeBorder,
+                      focusedBorder: orangeBorder,
                       isDense: true,
                     ),
                   ),
@@ -349,9 +678,11 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
             const SizedBox(height: 8),
             TextField(
               controller: arrivalDetailController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: '상세주소 *',
-                border: OutlineInputBorder(),
+                border: orangeBorder,
+                enabledBorder: orangeBorder,
+                focusedBorder: orangeBorder,
                 isDense: true,
               ),
             ),
@@ -361,9 +692,11 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
                 Expanded(
                   child: TextField(
                     controller: arrivalCompanyController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: '상호 (선택입력)',
-                      border: OutlineInputBorder(),
+                      border: orangeBorder,
+                      enabledBorder: orangeBorder,
+                      focusedBorder: orangeBorder,
                       isDense: true,
                     ),
                   ),
@@ -372,9 +705,11 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
                 Expanded(
                   child: TextField(
                     controller: arrivalNameController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: '이름 *',
-                      border: OutlineInputBorder(),
+                      border: orangeBorder,
+                      enabledBorder: orangeBorder,
+                      focusedBorder: orangeBorder,
                       isDense: true,
                     ),
                   ),
@@ -384,9 +719,11 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
             const SizedBox(height: 8),
             TextField(
               controller: arrivalContactController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: '연락처 *',
-                border: OutlineInputBorder(),
+                border: orangeBorder,
+                enabledBorder: orangeBorder,
+                focusedBorder: orangeBorder,
                 isDense: true,
               ),
             ),
@@ -396,9 +733,11 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
             TextField(
               controller: contentController,
               maxLines: 3,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: '상세히 입력해주세요. 예) 서류, 드라이아이스',
-                border: OutlineInputBorder(),
+                border: orangeBorder,
+                enabledBorder: orangeBorder,
+                focusedBorder: orangeBorder,
                 isDense: true,
               ),
             ),
@@ -407,13 +746,10 @@ class _CargoOrderPageState extends State<CargoOrderPage> {
             // 바로 주문 버튼
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const OrderListPage()),
-                  );
-                },
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ElevatedButton(
+                onPressed: _saveOrderInfo, // Call the new save function
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.amber,
                   foregroundColor: Colors.black,
